@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>ConjugaFacile — I Verbi Italiani</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:#F5F7FA;font-family:'Nunito',sans-serif;-webkit-tap-highlight-color:transparent;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.9)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.fade-in{animation:fadeIn .3s ease both;}
+.slide-up{animation:slideUp .4s ease both;}
+.tap{transition:transform .15s,box-shadow .15s;cursor:pointer;-webkit-user-select:none;user-select:none;}
+.tap:active{transform:scale(.97);}
+.card{background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.07);}
+.btn{border:none;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:800;transition:all .18s;}
+.btn:active{transform:scale(.96);}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+input:focus{outline:none;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:#D1D9E0;border-radius:2px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+const C = {
+  bg:"#F5F7FA",white:"#FFFFFF",surface:"#F0F4F8",border:"#E2E8F0",
+  text:"#1A2332",muted:"#64748B",light:"#94A3B8",
+  presente:{a:"#0EA5E9",b:"#0284C7",bg:"#EFF8FF"},
+  imperfetto:{a:"#7C3AED",b:"#6D28D9",bg:"#F5F3FF"},
+  passato:{a:"#DB2777",b:"#BE185D",bg:"#FDF2F8"},
+  futuro:{a:"#16A34A",b:"#15803D",bg:"#F0FDF4"},
+  congiuntivo:{a:"#EA580C",b:"#C2410C",bg:"#FFF7ED"},
+  condizionale:{a:"#9333EA",b:"#7E22CE",bg:"#FAF5FF"},
+  correct:"#16A34A",wrong:"#DC2626",
+};
+const TEMPI=[
+  {id:"presente",nome:"Indicativo Presente",short:"Presente",emoji:"🌞",clr:C.presente,
+   regola:"Azioni che accadono ADESSO o che si fanno abitualmente.",
+   formazione:"Togli -ARE/-ERE/-IRE dalla forma base e aggiungi le terminazioni.",
+   tabella:{persone:["io","tu","lui/lei","noi","voi","loro"],
+     ARE:["cant-O","cant-I","cant-A","cant-IAMO","cant-ATE","cant-ANO"],
+     ERE:["legg-O","legg-I","legg-E","legg-IAMO","legg-ETE","legg-ONO"],
+     IRE:["dorm-O","dorm-I","dorm-E","dorm-IAMO","dorm-ITE","dorm-ONO"]},
+   esempi:[{f:"Io canto una canzone.",t:"Azione in corso"},{f:"Tu leggi ogni sera.",t:"Abitudine"},{f:"Loro dormono otto ore.",t:"Abitudine"}],
+   trucco:"💡 I verbi -ERE fanno -ONO alla 3ª plurale (leggono), non -ANO!"},
+  {id:"imperfetto",nome:"Indicativo Imperfetto",short:"Imperfetto",emoji:"🌅",clr:C.imperfetto,
+   regola:"Azioni abituali nel passato o azioni che duravano nel tempo.",
+   formazione:"Aggiungi -AVO / -EVO / -IVO alla radice. Finisce sempre in -VO!",
+   tabella:{persone:["io","tu","lui/lei","noi","voi","loro"],
+     ARE:["cant-AVO","cant-AVI","cant-AVA","cant-AVAMO","cant-AVATE","cant-AVANO"],
+     ERE:["legg-EVO","legg-EVI","legg-EVA","legg-EVAMO","legg-EVATE","legg-EVANO"],
+     IRE:["dorm-IVO","dorm-IVI","dorm-IVA","dorm-IVAMO","dorm-IVATE","dorm-IVANO"]},
+   esempi:[{f:"Da piccola cantavo ogni giorno.",t:"Abitudine passata"},{f:"Mentre leggevo, squillò il telefono.",t:"Azione in corso nel passato"},{f:"Dormivano quando siamo arrivati.",t:"Stato passato"}],
+   trucco:"💡 Trucco: l'imperfetto finisce SEMPRE in -VO! (cantaVO, leggeVO, dormiVO)"},
+  {id:"passato",nome:"Passato Prossimo",short:"Pass. Prossimo",emoji:"⏪",clr:C.passato,
+   regola:"Azioni finite e avvenute nel passato recente.",
+   formazione:"AVERE o ESSERE (presente) + Participio Passato. I verbi di moto vogliono ESSERE!",
+   tabella:{persone:["io","tu","lui/lei","noi","voi","loro"],
+     ARE:["ho cant-ATO","hai cant-ATO","ha cant-ATO","abbiamo cant-ATO","avete cant-ATO","hanno cant-ATO"],
+     ERE:["ho letto*","hai letto","ha letto","abbiamo letto","avete letto","hanno letto"],
+     IRE:["ho dorm-ITO","hai dorm-ITO","ha dorm-ITO","abbiamo dorm-ITO","avete dorm-ITO","hanno dorm-ITO"]},
+   esempi:[{f:"Ieri ho cantato alla recita.",t:"Azione finita nel passato"},{f:"Ha letto quel libro? (LEGGERE→letto)",t:"Participio irregolare!"},{f:"Siamo andati al parco.",t:"Verbo di moto → ESSERE"}],
+   trucco:"💡 Con verbi di moto usa ESSERE: sono andato, sei venuto, è partita!"},
+  {id:"futuro",nome:"Futuro Semplice",short:"Futuro",emoji:"🚀",clr:C.futuro,
+   regola:"Azioni che accadranno in futuro o previsioni.",
+   formazione:"Per -ARE togli la A finale. Tutte e tre le coniugazioni hanno le stesse terminazioni!",
+   tabella:{persone:["io","tu","lui/lei","noi","voi","loro"],
+     ARE:["canter-Ò","canter-AI","canter-À","canter-EMO","canter-ETE","canter-ANNO"],
+     ERE:["legger-Ò","legger-AI","legger-À","legger-EMO","legger-ETE","legger-ANNO"],
+     IRE:["dormir-Ò","dormir-AI","dormir-À","dormir-EMO","dormir-ETE","dormir-ANNO"]},
+   esempi:[{f:"Domani canterò alla festa.",t:"Azione futura certa"},{f:"Leggerai quel libro la settimana prossima.",t:"Azione futura programmata"},{f:"Domani pioverà.",t:"Previsione"}],
+   trucco:"💡 Al futuro tutte e 3 le coniugazioni: -ò -ai -à -emo -ete -anno!"},
+  {id:"congiuntivo",nome:"Congiuntivo Presente",short:"Congiuntivo",emoji:"🤔",clr:C.congiuntivo,
+   regola:"Si usa dopo 'che' per dubbi, desideri, speranze, opinioni.",
+   formazione:"1ª 2ª 3ª singolare UGUALI! Per distinguerle si usa sempre il soggetto.",
+   tabella:{persone:["che io","che tu","che lui/lei","che noi","che voi","che loro"],
+     ARE:["cant-I","cant-I","cant-I","cant-IAMO","cant-IATE","cant-INO"],
+     ERE:["legg-A","legg-A","legg-A","legg-IAMO","legg-IATE","legg-ANO"],
+     IRE:["dorm-A","dorm-A","dorm-A","dorm-IAMO","dorm-IATE","dorm-ANO"]},
+   esempi:[{f:"Spero che tu canti bene.",t:"Desiderio/speranza"},{f:"Credo che lui legga molto.",t:"Opinione incerta"},{f:"Voglio che dormano di più.",t:"Volontà su altri"}],
+   trucco:"💡 Dopo SPERO CHE, PENSO CHE, VOGLIO CHE → usa il congiuntivo!"},
+  {id:"condizionale",nome:"Condizionale Presente",short:"Condizionale",emoji:"💭",clr:C.condizionale,
+   regola:"Azioni ipotetiche, desideri educati, richieste gentili.",
+   formazione:"Come il futuro ma con: -ei -esti -ebbe -emmo -este -ebbero.",
+   tabella:{persone:["io","tu","lui/lei","noi","voi","loro"],
+     ARE:["canter-EI","canter-ESTI","canter-EBBE","canter-EMMO","canter-ESTE","canter-EBBERO"],
+     ERE:["legger-EI","legger-ESTI","legger-EBBE","legger-EMMO","legger-ESTE","legger-EBBERO"],
+     IRE:["dormir-EI","dormir-ESTI","dormir-EBBE","dormir-EMMO","dormir-ESTE","dormir-EBBERO"]},
+   esempi:[{f:"Canterei, ma ho mal di gola.",t:"Condizione ipotetica"},{f:"Potresti aprire la finestra?",t:"Richiesta educata"},{f:"Vorrei un gelato, per favore.",t:"Desiderio gentile"}],
+   trucco:"💡 'Vorrei', 'potrei', 'dovrei' sono condizionali: usali per essere educati!"},
+];
+const DB_A=[
+  {id:"a1",cat:"presente",conj:"ARE",t:"Io ___ (CANTARE, presente)",ok:"canto",o:["canto","canti","cantano","cantavo"]},
+  {id:"a2",cat:"presente",conj:"ARE",t:"Tu ___ (GIOCARE, presente)",ok:"giochi",o:["gioca","giochi","giochiamo","giocano"]},
+  {id:"a3",cat:"presente",conj:"ARE",t:"Noi ___ (MANGIARE, presente)",ok:"mangiamo",o:["mangiano","mangiamo","mangiate","mangi"]},
+  {id:"a4",cat:"presente",conj:"ARE",t:"Loro ___ (PARLARE, presente)",ok:"parlano",o:["parlate","parla","parlano","parliamo"]},
+  {id:"a5",cat:"presente",conj:"ARE",t:"Voi ___ (STUDIARE, presente)",ok:"studiate",o:["studiamo","studiate","studiano","studi"]},
+  {id:"a6",cat:"presente",conj:"ERE",t:"Io ___ (LEGGERE, presente)",ok:"leggo",o:["leggi","legge","leggo","leggono"]},
+  {id:"a7",cat:"presente",conj:"ERE",t:"Tu ___ (SCRIVERE, presente)",ok:"scrivi",o:["scrive","scrivo","scrivi","scriviamo"]},
+  {id:"a8",cat:"presente",conj:"ERE",t:"Loro ___ (VEDERE, presente)",ok:"vedono",o:["vedete","vedono","vede","vediamo"]},
+  {id:"a9",cat:"presente",conj:"IRE",t:"Io ___ (DORMIRE, presente)",ok:"dormo",o:["dormi","dorme","dormo","dormono"]},
+  {id:"a10",cat:"presente",conj:"IRE",t:"Loro ___ (PARTIRE, presente)",ok:"partono",o:["partite","parte","partiamo","partono"]},
+  {id:"a11",cat:"imperfetto",conj:"ARE",t:"Io ___ (CANTARE, imperfetto)",ok:"cantavo",o:["cantavo","cantavi","cantava","cantavamo"]},
+  {id:"a12",cat:"imperfetto",conj:"ARE",t:"Tu ___ (GIOCARE, imperfetto)",ok:"giocavi",o:["giocavo","giocavi","giocava","giocavamo"]},
+  {id:"a13",cat:"imperfetto",conj:"ARE",t:"Loro ___ (PARLARE, imperfetto)",ok:"parlavano",o:["parlavate","parlava","parlavo","parlavano"]},
+  {id:"a14",cat:"imperfetto",conj:"ARE",t:"Noi ___ (MANGIARE, imperfetto)",ok:"mangiavamo",o:["mangiavamo","mangiavate","mangiavano","mangiavo"]},
+  {id:"a15",cat:"imperfetto",conj:"ERE",t:"Io ___ (LEGGERE, imperfetto)",ok:"leggevo",o:["leggevo","leggevi","leggeva","leggevamo"]},
+  {id:"a16",cat:"imperfetto",conj:"ERE",t:"Lui ___ (SCRIVERE, imperfetto)",ok:"scriveva",o:["scrivevo","scrivevi","scriveva","scrivevamo"]},
+  {id:"a17",cat:"imperfetto",conj:"IRE",t:"Tu ___ (DORMIRE, imperfetto)",ok:"dormivi",o:["dormivo","dormivi","dormiva","dormivamo"]},
+  {id:"a18",cat:"imperfetto",conj:"IRE",t:"Loro ___ (SENTIRE, imperfetto)",ok:"sentivano",o:["sentivate","sentiva","sentivano","sentivo"]},
+  {id:"a19",cat:"passato",conj:"ARE",t:"Io ___ (CANTARE, passato prossimo)",ok:"ho cantato",o:["ho cantato","ho cantavo","sono cantato","avevo cantato"]},
+  {id:"a20",cat:"passato",conj:"ARE",t:"Tu ___ (MANGIARE, passato prossimo)",ok:"hai mangiato",o:["sei mangiato","hai mangiato","avevi mangiato","hai mangiavo"]},
+  {id:"a21",cat:"passato",conj:"ARE",t:"Noi ___ (PARLARE, passato prossimo)",ok:"abbiamo parlato",o:["abbiamo parlato","siamo parlato","avevamo parlato","abbiamo parlavo"]},
+  {id:"a22",cat:"passato",conj:"ERE",t:"Io ___ (LEGGERE, p.p.) — participio irregolare!",ok:"ho letto",o:["ho letto","ho legguto","ho leggito","sono letto"]},
+  {id:"a23",cat:"passato",conj:"ERE",t:"Lei ___ (VEDERE, passato prossimo)",ok:"ha visto",o:["ha veduto","ha vista","ha visto","è visto"]},
+  {id:"a24",cat:"passato",conj:"IRE",t:"Lui ___ (DORMIRE, passato prossimo)",ok:"ha dormito",o:["è dormito","ha dormito","ha dormato","ha dormuto"]},
+  {id:"a25",cat:"passato",conj:"IRE",t:"Noi ___ (PARTIRE, p.p.) — usa ESSERE!",ok:"siamo partiti",o:["abbiamo partito","siamo partiti","siamo partite","avevamo partito"]},
+  {id:"a26",cat:"futuro",conj:"ARE",t:"Io ___ (CANTARE, futuro)",ok:"canterò",o:["canterò","canto","canterei","cantavo"]},
+  {id:"a27",cat:"futuro",conj:"ARE",t:"Tu ___ (GIOCARE, futuro)",ok:"giocherai",o:["giocherai","giocherò","giocherei","giocavi"]},
+  {id:"a28",cat:"futuro",conj:"ARE",t:"Loro ___ (PARLARE, futuro)",ok:"parleranno",o:["parlerete","parleranno","parlerò","parlano"]},
+  {id:"a29",cat:"futuro",conj:"ERE",t:"Io ___ (LEGGERE, futuro)",ok:"leggerò",o:["leggerò","leggo","leggerei","leggevo"]},
+  {id:"a30",cat:"futuro",conj:"ERE",t:"Tu ___ (SCRIVERE, futuro)",ok:"scriverai",o:["scriverai","scriverò","scriverei","scrivevi"]},
+  {id:"a31",cat:"futuro",conj:"IRE",t:"Lei ___ (DORMIRE, futuro)",ok:"dormirà",o:["dormirò","dormirai","dormirà","dormirebbe"]},
+  {id:"a32",cat:"futuro",conj:"IRE",t:"Voi ___ (SENTIRE, futuro)",ok:"sentirete",o:["sentiranno","sentirete","sentiremo","sentirei"]},
+  {id:"a33",cat:"congiuntivo",conj:"ARE",t:"Spero che tu ___ (CANTARE, congiuntivo)",ok:"canti",o:["canti","canta","cantavi","cantassi"]},
+  {id:"a34",cat:"congiuntivo",conj:"ARE",t:"Voglio che lei ___ (GIOCARE, congiuntivo)",ok:"giochi",o:["gioca","giochi","giocasse","giocherà"]},
+  {id:"a35",cat:"congiuntivo",conj:"ERE",t:"Credo che lui ___ (LEGGERE, congiuntivo)",ok:"legga",o:["legge","legga","leggesse","leggerà"]},
+  {id:"a36",cat:"congiuntivo",conj:"ERE",t:"Penso che loro ___ (SCRIVERE, congiuntivo)",ok:"scrivano",o:["scrivono","scrivano","scrivessero","scriveranno"]},
+  {id:"a37",cat:"congiuntivo",conj:"IRE",t:"Spero che voi ___ (DORMIRE, congiuntivo)",ok:"dormiate",o:["dormite","dormiate","dormiste","dormirete"]},
+  {id:"a38",cat:"congiuntivo",conj:"IRE",t:"Dopo quale espressione si usa il congiuntivo?",ok:"Penso che...",o:["Ieri ho...","Domani...","Penso che...","Mentre io..."]},
+  {id:"a39",cat:"condizionale",conj:"ARE",t:"Io ___ (CANTARE, condizionale)",ok:"canterei",o:["canterei","cantavo","canterò","canto"]},
+  {id:"a40",cat:"condizionale",conj:"ARE",t:"Tu ___ (MANGIARE, condizionale)",ok:"mangeresti",o:["mangeresti","mangerai","mangerò","mangiavi"]},
+  {id:"a41",cat:"condizionale",conj:"ERE",t:"Io ___ (LEGGERE, condizionale)",ok:"leggerei",o:["leggerei","leggerò","leggevo","leggo"]},
+  {id:"a42",cat:"condizionale",conj:"ERE",t:"Lei ___ (VEDERE, condizionale)",ok:"vedrebbe",o:["vedrebbe","vederà","vide","vedeva"]},
+  {id:"a43",cat:"condizionale",conj:"IRE",t:"Noi ___ (DORMIRE, condizionale)",ok:"dormiremmo",o:["dormiremmo","dormiremo","dormivamo","dormiamo"]},
+  {id:"a44",cat:"condizionale",conj:"IRE",t:"Per fare una richiesta educata usi:",ok:"Potresti aprire la finestra?",o:["Puoi aprire la finestra?","Potresti aprire la finestra?","Apri la finestra!","Aprirai la finestra?"]},
+  {id:"a45",cat:"presente",conj:"IRE",t:"Io ___ (CAPIRE, presente — verbo in -ISC!)",ok:"capisco",o:["capo","capisco","capisce","capiamo"]},
+  {id:"a46",cat:"passato",conj:"ARE",t:"'Siamo arrivati tardi' — perché si usa ESSERE?",ok:"ARRIVARE è un verbo di moto",o:["È irregolare","ARRIVARE è un verbo di moto","È al plurale","Perché siamo è più corto"]},
+  {id:"a47",cat:"imperfetto",conj:"ERE",t:"Noi ___ (VEDERE, imperfetto)",ok:"vedevamo",o:["vedevamo","vedevate","vedevano","vedevo"]},
+  {id:"a48",cat:"futuro",conj:"ARE",t:"'Domani ___ al mare' — futuro di ANDARE (io)",ok:"andrò",o:["vado","andavo","andrò","andrei"]},
+  {id:"a49",cat:"congiuntivo",conj:"ARE",t:"Quale frase usa CORRETTAMENTE il congiuntivo?",ok:"Spero che lei studi di più.",o:["Spero che lei studia.","Spero che lei studi di più.","Spero che lei studierà.","Spero che lei studiava."]},
+  {id:"a50",cat:"condizionale",conj:"ARE",t:"Per esprimere un desiderio gentile al bar dici:",ok:"Vorrei un caffè.",o:["Voglio un caffè!","Vorrei un caffè.","Vorrò un caffè.","Volevo un caffè."]},
+];
+const DB_B=[
+  {id:"b1",cat:"presente",t:"Riconosci il tempo:\n«Io CANTO una canzone.»",ok:"Presente",o:["Presente","Imperfetto","Futuro","Condizionale"]},
+  {id:"b2",cat:"presente",t:"Riconosci il tempo:\n«Loro MANGIANO la pizza ogni venerdì.»",ok:"Presente",o:["Presente","Passato Prossimo","Imperfetto","Futuro"]},
+  {id:"b3",cat:"presente",t:"Riconosci il tempo:\n«Tu LEGGI molto velocemente.»",ok:"Presente",o:["Presente","Imperfetto","Condizionale","Futuro"]},
+  {id:"b4",cat:"presente",t:"Riconosci il tempo:\n«Noi STUDIAMO ogni pomeriggio.»",ok:"Presente",o:["Presente","Passato Prossimo","Futuro","Imperfetto"]},
+  {id:"b5",cat:"presente",t:"Riconosci il tempo:\n«Il gatto DORME sul divano.»",ok:"Presente",o:["Presente","Imperfetto","Futuro","Condizionale"]},
+  {id:"b6",cat:"presente",t:"Riconosci il tempo:\n«Voi CAPITE la lezione?»",ok:"Presente",o:["Presente","Congiuntivo","Condizionale","Imperfetto"]},
+  {id:"b7",cat:"imperfetto",t:"Riconosci il tempo:\n«Da piccola CANTAVO ogni giorno.»",ok:"Imperfetto",o:["Imperfetto","Presente","Futuro","Condizionale"]},
+  {id:"b8",cat:"imperfetto",t:"Riconosci il tempo:\n«Mentre LEGGEVO, squillò il telefono.»",ok:"Imperfetto",o:["Imperfetto","Passato Prossimo","Presente","Futuro"]},
+  {id:"b9",cat:"imperfetto",t:"Riconosci il tempo:\n«I bambini DORMIVANO quando arrivammo.»",ok:"Imperfetto",o:["Imperfetto","Passato Prossimo","Presente","Condizionale"]},
+  {id:"b10",cat:"imperfetto",t:"Riconosci il tempo:\n«Tu GIOCAVI sempre in giardino.»",ok:"Imperfetto",o:["Imperfetto","Presente","Futuro","Passato Prossimo"]},
+  {id:"b11",cat:"imperfetto",t:"Riconosci il tempo:\n«Noi MANGIAVAMO tardi la sera.»",ok:"Imperfetto",o:["Imperfetto","Presente","Passato Prossimo","Condizionale"]},
+  {id:"b12",cat:"imperfetto",t:"Riconosci il tempo:\n«Lei SCRIVEVA lettere bellissime.»",ok:"Imperfetto",o:["Imperfetto","Presente","Congiuntivo","Condizionale"]},
+  {id:"b13",cat:"passato",t:"Riconosci il tempo:\n«Ieri HO MANGIATO la pizza.»",ok:"Passato Prossimo",o:["Passato Prossimo","Imperfetto","Presente","Futuro"]},
+  {id:"b14",cat:"passato",t:"Riconosci il tempo:\n«Abbiamo STUDIATO tutta la notte.»",ok:"Passato Prossimo",o:["Passato Prossimo","Imperfetto","Futuro","Condizionale"]},
+  {id:"b15",cat:"passato",t:"Riconosci il tempo:\n«Sei PARTITA senza salutare.»",ok:"Passato Prossimo",o:["Passato Prossimo","Futuro","Presente","Imperfetto"]},
+  {id:"b16",cat:"passato",t:"Riconosci il tempo:\n«Ha LETTO quel libro tre volte.»",ok:"Passato Prossimo",o:["Passato Prossimo","Imperfetto","Condizionale","Presente"]},
+  {id:"b17",cat:"passato",t:"Riconosci il tempo:\n«Stamattina ho DORMITO fino alle 10.»",ok:"Passato Prossimo",o:["Passato Prossimo","Imperfetto","Futuro","Presente"]},
+  {id:"b18",cat:"passato",t:"Riconosci il tempo:\n«Siamo ARRIVATI in ritardo.»",ok:"Passato Prossimo",o:["Passato Prossimo","Imperfetto","Futuro","Condizionale"]},
+  {id:"b19",cat:"futuro",t:"Riconosci il tempo:\n«Domani CANTERÒ alla recita.»",ok:"Futuro",o:["Futuro","Presente","Condizionale","Imperfetto"]},
+  {id:"b20",cat:"futuro",t:"Riconosci il tempo:\n«La settimana prossima STUDIEREMO geometria.»",ok:"Futuro",o:["Futuro","Presente","Passato Prossimo","Imperfetto"]},
+  {id:"b21",cat:"futuro",t:"Riconosci il tempo:\n«Domani PIOVERÀ tutto il giorno.»",ok:"Futuro",o:["Futuro","Condizionale","Presente","Imperfetto"]},
+  {id:"b22",cat:"futuro",t:"Riconosci il tempo:\n«L'estate prossima ANDRÒ al mare.»",ok:"Futuro",o:["Futuro","Condizionale","Presente","Passato Prossimo"]},
+  {id:"b23",cat:"futuro",t:"Riconosci il tempo:\n«Voi LEGGERETE quel libro a casa.»",ok:"Futuro",o:["Futuro","Presente","Condizionale","Imperfetto"]},
+  {id:"b24",cat:"futuro",t:"Riconosci il tempo:\n«Loro DORMIRANNO in tenda stanotte.»",ok:"Futuro",o:["Futuro","Presente","Imperfetto","Condizionale"]},
+  {id:"b25",cat:"congiuntivo",t:"Riconosci il tempo:\n«Spero che tu CANTI bene stasera.»",ok:"Congiuntivo",o:["Congiuntivo","Presente","Futuro","Condizionale"]},
+  {id:"b26",cat:"congiuntivo",t:"Riconosci il tempo:\n«Credo che lui LEGGA molto.»",ok:"Congiuntivo",o:["Congiuntivo","Presente","Imperfetto","Futuro"]},
+  {id:"b27",cat:"congiuntivo",t:"Riconosci il tempo:\n«Voglio che voi STUDIATE di più.»",ok:"Congiuntivo",o:["Congiuntivo","Presente","Futuro","Condizionale"]},
+  {id:"b28",cat:"congiuntivo",t:"Riconosci il tempo:\n«Penso che loro DORMANO troppo.»",ok:"Congiuntivo",o:["Congiuntivo","Presente","Condizionale","Futuro"]},
+  {id:"b29",cat:"congiuntivo",t:"Riconosci il tempo:\n«Sebbene PIOVA, uscirò lo stesso.»",ok:"Congiuntivo",o:["Congiuntivo","Presente","Imperfetto","Condizionale"]},
+  {id:"b30",cat:"congiuntivo",t:"Quale parola segnala di solito il congiuntivo?",ok:"che (spero che, penso che...)",o:["domani","ieri","sempre","che (spero che, penso che...)"]},
+  {id:"b31",cat:"condizionale",t:"Riconosci il tempo:\n«Io CANTEREI volentieri, ma sono stanca.»",ok:"Condizionale",o:["Condizionale","Futuro","Imperfetto","Presente"]},
+  {id:"b32",cat:"condizionale",t:"Riconosci il tempo:\n«POTRESTI passarmi il sale?»",ok:"Condizionale",o:["Condizionale","Futuro","Presente","Congiuntivo"]},
+  {id:"b33",cat:"condizionale",t:"Riconosci il tempo:\n«VORREI un gelato al cioccolato.»",ok:"Condizionale",o:["Condizionale","Presente","Futuro","Imperfetto"]},
+  {id:"b34",cat:"condizionale",t:"Riconosci il tempo:\n«Lei LEGGEREBBE di più, ma non ha tempo.»",ok:"Condizionale",o:["Condizionale","Futuro","Imperfetto","Congiuntivo"]},
+  {id:"b35",cat:"condizionale",t:"Riconosci il tempo:\n«Noi DORMIREMMO volentieri!»",ok:"Condizionale",o:["Condizionale","Futuro","Imperfetto","Presente"]},
+  {id:"b36",cat:"presente",t:"Qual è il tempo di PARLANO?",ok:"Presente",o:["Presente","Imperfetto","Futuro","Passato Prossimo"]},
+  {id:"b37",cat:"imperfetto",t:"Qual è il tempo di PARLAVANO?",ok:"Imperfetto",o:["Imperfetto","Presente","Futuro","Condizionale"]},
+  {id:"b38",cat:"futuro",t:"Qual è il tempo di PARLERANNO?",ok:"Futuro",o:["Futuro","Presente","Condizionale","Imperfetto"]},
+  {id:"b39",cat:"condizionale",t:"Qual è il tempo di PARLEREBBERO?",ok:"Condizionale",o:["Condizionale","Futuro","Congiuntivo","Imperfetto"]},
+  {id:"b40",cat:"congiuntivo",t:"Qual è il tempo di PARLINO (che loro)?",ok:"Congiuntivo",o:["Congiuntivo","Presente","Futuro","Condizionale"]},
+  {id:"b41",cat:"passato",t:"Qual è il tempo di HANNO PARLATO?",ok:"Passato Prossimo",o:["Passato Prossimo","Imperfetto","Futuro","Presente"]},
+  {id:"b42",cat:"presente",t:"Qual è il tempo di DORME?",ok:"Presente",o:["Presente","Imperfetto","Futuro","Condizionale"]},
+  {id:"b43",cat:"imperfetto",t:"Qual è il tempo di DORMIVA?",ok:"Imperfetto",o:["Imperfetto","Condizionale","Futuro","Presente"]},
+  {id:"b44",cat:"futuro",t:"Qual è il tempo di DORMIRÀ?",ok:"Futuro",o:["Futuro","Condizionale","Presente","Passato Prossimo"]},
+  {id:"b45",cat:"condizionale",t:"Qual è il tempo di DORMIREBBE?",ok:"Condizionale",o:["Condizionale","Futuro","Congiuntivo","Imperfetto"]},
+  {id:"b46",cat:"passato",t:"Qual è il tempo di HA DORMITO?",ok:"Passato Prossimo",o:["Passato Prossimo","Imperfetto","Presente","Futuro"]},
+  {id:"b47",cat:"congiuntivo",t:"Qual è il tempo di DORMA (che io)?",ok:"Congiuntivo",o:["Congiuntivo","Presente","Futuro","Condizionale"]},
+  {id:"b48",cat:"futuro",t:"Distingui: CANTERÒ appartiene a quale tempo?",ok:"Futuro",o:["Futuro","Condizionale","Presente","Passato Prossimo"]},
+  {id:"b49",cat:"condizionale",t:"Distingui: CANTEREI appartiene a quale tempo?",ok:"Condizionale",o:["Condizionale","Futuro","Imperfetto","Congiuntivo"]},
+  {id:"b50",cat:"congiuntivo",t:"Distingui: CANTI (che io) appartiene a quale tempo?",ok:"Congiuntivo",o:["Congiuntivo","Presente","Futuro","Condizionale"]},
+];
+const CATS=["presente","imperfetto","passato","futuro","congiuntivo","condizionale"];
+const TMP={};TEMPI.forEach(t=>TMP[t.id]=t);
+function shuffle(a){return[...a].sort(()=>Math.random()-.5);}
+function pick20(tipo){
+  const DB=tipo==="B"?DB_B:DB_A;
+  const res=[];
+  CATS.forEach(c=>{const pool=shuffle(DB.filter(d=>d.cat===c));res.push(...pool.slice(0,Math.ceil(20/CATS.length)));});
+  return shuffle(res).slice(0,20).map(d=>({...d,opz:shuffle(d.o)}));
+}
+const LS_KEY="conjugafacile_v3";
+function loadAll(){try{return JSON.parse(localStorage.getItem(LS_KEY))||{};}catch{return {};}}
+function saveAll(d){localStorage.setItem(LS_KEY,JSON.stringify(d));}
+function loadUser(nome){const all=loadAll();return all[nome]||{nome,creato:Date.now(),lezioniStudiate:[],tests:[],prioritari:[],ultimoAccesso:null};}
+function saveUser(u){const all=loadAll();all[u.nome]={...u,ultimoAccesso:Date.now()};saveAll(all);}
+function listUsers(){return Object.keys(loadAll());}
+function PBar({value,max,color,h=8}){const p=max>0?Math.min(100,(value/max)*100):0;return(<div style={{background:"#E2E8F0",borderRadius:6,height:h,overflow:"hidden"}}><div style={{height:"100%",borderRadius:6,background:color,width:`${p}%`,transition:"width .7s cubic-bezier(.4,2,.6,1)"}}/></div>);}
+function Badge({color,children,size="sm"}){return(<span style={{display:"inline-block",padding:size==="sm"?"2px 9px":"4px 13px",borderRadius:20,background:`${color}18`,color,border:`1px solid ${color}33`,fontSize:size==="sm"?11:12,fontWeight:800}}>{children}</span>);}
+
+function LoginScreen({onLogin}){
+  const [nome,setNome]=useState("");const [users]=useState(listUsers);const [err,setErr]=useState("");const ref=useRef();
+  useEffect(()=>{ref.current?.focus();},[]);
+  const entra=(n)=>{const p=(n||nome).trim();if(!p||p.length<2){setErr("Inserisci il tuo nome (min. 2 lettere)!");return;}const u=loadUser(p);saveUser(u);onLogin(u);};
+  return(<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(160deg,#EFF8FF 0%,#F5F3FF 50%,#FFF7ED 100%)",padding:20}}>
+    <div style={{width:"100%",maxWidth:400}}>
+      <div style={{textAlign:"center",marginBottom:28}}>
+        <div style={{fontSize:60,animation:"float 3s ease-in-out infinite"}}>📝</div>
+        <h1 style={{fontFamily:"'Baloo 2',sans-serif",fontSize:30,color:C.text,marginTop:10}}>ConjugaFacile</h1>
+        <p style={{color:C.muted,fontSize:14,marginTop:4}}>I verbi italiani — 5ª elementare</p>
+      </div>
+      <div className="card" style={{padding:28}}>
+        <p style={{fontWeight:800,fontSize:16,color:C.text,marginBottom:4}}>Come ti chiami? 👋</p>
+        <p style={{color:C.muted,fontSize:13,marginBottom:16}}>Scrivi il tuo nome per salvare i progressi su questo dispositivo.</p>
+        <input ref={ref} value={nome} onChange={e=>{setNome(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&entra()} placeholder="Es: Sofia, Marco, Giulia..."
+          style={{width:"100%",padding:"12px 16px",borderRadius:12,border:`2px solid ${err?C.wrong:nome?C.presente.a:C.border}`,fontSize:16,fontWeight:700,color:C.text,fontFamily:"'Nunito',sans-serif",background:C.white,transition:"border .2s",marginBottom:6}}/>
+        {err&&<p style={{color:C.wrong,fontSize:12,marginBottom:8}}>{err}</p>}
+        <button className="btn tap" onClick={()=>entra()} style={{width:"100%",padding:"13px",borderRadius:12,background:`linear-gradient(135deg,${C.presente.a},${C.condizionale.a})`,color:"white",fontSize:16,marginTop:8,boxShadow:`0 4px 16px rgba(14,165,233,.25)`}}>Inizia! →</button>
+        {users.length>0&&(<div style={{marginTop:20}}><p style={{color:C.muted,fontSize:12,textAlign:"center",marginBottom:10}}>— oppure scegli il tuo profilo —</p><div style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center"}}>{users.map(u=>(<button key={u} className="btn tap" onClick={()=>entra(u)} style={{padding:"8px 16px",borderRadius:20,background:C.surface,border:`1px solid ${C.border}`,color:C.text,fontSize:14}}>👤 {u}</button>))}</div></div>)}
+      </div>
+      <p style={{color:C.light,fontSize:11,textAlign:"center",marginTop:12}}>🔒 I dati sono salvati solo su questo dispositivo</p>
+    </div>
+  </div>);
+}
+
+function StudioTempo({tempo,onBack,prioritario,onStudiato}){
+  const [tab,setTab]=useState("ARE");const cl=tempo.clr;
+  return(<div className="fade-in">
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+      <button className="btn tap" onClick={onBack} style={{padding:"8px 18px",borderRadius:10,background:C.surface,border:`1px solid ${C.border}`,color:C.muted,fontSize:13}}>← Indietro</button>
+      {prioritario&&<Badge color={C.congiuntivo.a}>⚠️ Da ripassare</Badge>}
+    </div>
+    <div style={{background:cl.bg,borderRadius:16,padding:20,marginBottom:12,borderLeft:`4px solid ${cl.a}`,border:`1px solid ${cl.a}22`}}>
+      <div style={{fontSize:42}}>{tempo.emoji}</div>
+      <h2 style={{fontFamily:"'Baloo 2',sans-serif",fontSize:20,color:cl.b,margin:"8px 0 6px"}}>{tempo.nome}</h2>
+      <p style={{color:C.muted,fontSize:13,lineHeight:1.6}}>{tempo.regola}</p>
+    </div>
+    <div className="card" style={{padding:16,marginBottom:12}}>
+      <p style={{fontSize:11,fontWeight:800,color:C.light,letterSpacing:1,marginBottom:6}}>📐 COME SI FORMA</p>
+      <p style={{fontSize:14,color:C.text,lineHeight:1.7}}>{tempo.formazione}</p>
+    </div>
+    <div className="card" style={{padding:16,marginBottom:12}}>
+      <p style={{fontSize:11,fontWeight:800,color:C.light,letterSpacing:1,marginBottom:12}}>📊 TABELLA</p>
+      <div style={{display:"flex",gap:6,marginBottom:12}}>{["ARE","ERE","IRE"].map(v=>(<button key={v} className="btn tap" onClick={()=>setTab(v)} style={{flex:1,padding:"8px 0",borderRadius:10,border:"none",background:tab===v?cl.a:cl.bg,color:tab===v?"white":cl.b,fontSize:14}}>-{v}</button>))}</div>
+      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:260}}><thead><tr style={{borderBottom:`2px solid ${C.border}`}}><th style={{padding:"8px 10px",textAlign:"left",color:C.muted,fontSize:12,fontWeight:700}}>Persona</th><th style={{padding:"8px 10px",textAlign:"left",color:C.muted,fontSize:12,fontWeight:700}}>Forma</th></tr></thead><tbody>{tempo.tabella.persone.map((p,i)=>(<tr key={i} style={{background:i%2===0?C.white:C.surface}}><td style={{padding:"9px 10px",fontWeight:700,color:C.muted,fontSize:14}}>{p}</td><td style={{padding:"9px 10px",fontSize:14}}>{(tempo.tabella[tab][i]||"").split(/(-[A-ZÀÈÉÌÒÙ*]+)/g).map((pt,j)=>/^-[A-ZÀÈÉÌÒÙ]+$/.test(pt)?<span key={j} style={{color:cl.a,fontWeight:900}}>{pt.toLowerCase()}</span>:<span key={j} style={{color:C.text,fontWeight:600}}>{pt}</span>)}</td></tr>))}</tbody></table></div>
+      <p style={{fontSize:11,color:C.light,marginTop:8,textAlign:"center"}}>Le parti colorate sono le <strong style={{color:cl.a}}>desinenze</strong> da memorizzare</p>
+    </div>
+    <div className="card" style={{padding:16,marginBottom:12}}>
+      <p style={{fontSize:11,fontWeight:800,color:C.light,letterSpacing:1,marginBottom:10}}>💬 ESEMPI</p>
+      {tempo.esempi.map((e,i)=>(<div key={i} style={{padding:"10px 14px",borderRadius:10,marginBottom:8,background:cl.bg,borderLeft:`3px solid ${cl.a}`}}><p style={{fontWeight:800,color:cl.b,fontSize:15}}>{e.f}</p><p style={{color:C.muted,fontSize:12,marginTop:2}}>→ {e.t}</p></div>))}
+    </div>
+    <div style={{background:cl.bg,borderRadius:12,padding:14,marginBottom:16,border:`1.5px dashed ${cl.a}55`}}>
+      <p style={{fontSize:14,color:cl.b,fontWeight:700}}>{tempo.trucco}</p>
+    </div>
+    <button className="btn tap" onClick={onStudiato} style={{width:"100%",padding:"14px",borderRadius:14,background:`linear-gradient(135deg,${cl.a},${cl.b})`,color:"white",fontSize:15,boxShadow:`0 4px 16px ${cl.a}33`}}>✅ Ho studiato questa lezione!</button>
+  </div>);
+}
+
+function SceltiTipoTest({onScegli,prioritari}){
+  return(<div className="fade-in">
+    <div className="card" style={{padding:22,marginBottom:16,textAlign:"center"}}>
+      <div style={{fontSize:42,marginBottom:8}}>✏️</div>
+      <h2 style={{fontFamily:"'Baloo 2',sans-serif",fontSize:20,color:C.text,marginBottom:6}}>Che tipo di test vuoi fare?</h2>
+      <p style={{color:C.muted,fontSize:13}}>Scegli la modalità. Ogni test ha 20 domande a risposta multipla.</p>
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <div className="card tap" onClick={()=>onScegli("A")} style={{padding:22,cursor:"pointer",borderLeft:`5px solid ${C.presente.a}`}}>
+        <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+          <div style={{fontSize:38}}>📝</div>
+          <div><p style={{fontWeight:900,fontSize:17,color:C.text,marginBottom:4}}>Test A — Completa la forma</p><p style={{color:C.muted,fontSize:13,lineHeight:1.6}}>Ti viene mostrato un verbo all'infinito e la persona.<br/>Devi scegliere la forma coniugata corretta.<br/><em style={{color:C.presente.a}}>Es: «Io ___ (CANTARE, futuro)» → canterò</em></p></div>
+        </div>
+      </div>
+      <div className="card tap" onClick={()=>onScegli("B")} style={{padding:22,cursor:"pointer",borderLeft:`5px solid ${C.condizionale.a}`}}>
+        <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+          <div style={{fontSize:38}}>🔍</div>
+          <div><p style={{fontWeight:900,fontSize:17,color:C.text,marginBottom:4}}>Test B — Riconosci il tempo verbale</p><p style={{color:C.muted,fontSize:13,lineHeight:1.6}}>Ti viene mostrata una frase con il verbo già coniugato.<br/>Devi riconoscere a quale tempo appartiene.<br/><em style={{color:C.condizionale.a}}>Es: «Io CANTEREI» → Condizionale</em></p></div>
+        </div>
+      </div>
+      <div className="card tap" onClick={()=>onScegli("MIX")} style={{padding:22,cursor:"pointer",borderLeft:`5px solid ${C.futuro.a}`}}>
+        <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+          <div style={{fontSize:38}}>🎲</div>
+          <div>
+            <p style={{fontWeight:900,fontSize:17,color:C.text,marginBottom:4}}>Test Mix — Tutti e due i tipi</p>
+            <p style={{color:C.muted,fontSize:13,lineHeight:1.6}}>Mescola domande di tipo A e B per una sfida completa.<br/><em style={{color:C.futuro.a}}>Consigliato dopo aver fatto entrambi!</em></p>
+            {prioritari?.length>0&&(<p style={{color:C.congiuntivo.a,fontSize:12,marginTop:6,fontWeight:700}}>⚠️ Punti deboli: {prioritari.map(c=>TMP[c]?.short).join(", ")}</p>)}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>);
+}
+
+function Risultati({risposte,domande,onRicomincia,onStudia,tipoTest}){
+  const stats={};
+  CATS.forEach(c=>{const dc=domande.filter(d=>d.cat===c);const ok=dc.filter(d=>risposte[d.id]===d.ok).length;stats[c]={tot:dc.length,ok,pct:dc.length>0?Math.round((ok/dc.length)*100):null};});
+  const tot=domande.length;const totOk=domande.filter(d=>risposte[d.id]===d.ok).length;const pct=Math.round((totOk/tot)*100);
+  const forti=CATS.filter(c=>stats[c].pct!==null&&stats[c].pct>=75);
+  const deboli=CATS.filter(c=>stats[c].pct!==null&&stats[c].pct<60);
+  const medi=CATS.filter(c=>stats[c].pct!==null&&stats[c].pct>=60&&stats[c].pct<75);
+  const tipoLabel=tipoTest==="A"?"Tipo A — Completa la forma":tipoTest==="B"?"Tipo B — Riconosci il tempo":"Test Mix";
+  const voto=pct>=90?"🏆 Eccellente!":pct>=75?"🌟 Molto bene!":pct>=60?"👍 Buon lavoro!":"💪 Continua ad allenarti!";
+  const vc=pct>=75?C.futuro.a:pct>=50?C.congiuntivo.a:C.passato.a;
+  return(<div className="fade-in">
+    <div className="card" style={{padding:22,marginBottom:14,textAlign:"center",borderTop:`4px solid ${vc}`}}>
+      <div style={{fontSize:48}}>{voto.split(" ")[0]}</div>
+      <h2 style={{fontFamily:"'Baloo 2',sans-serif",color:vc,fontSize:22,margin:"8px 0 4px"}}>{voto.slice(3)}</h2>
+      <Badge color={C.presente.a} size="md">{tipoLabel}</Badge>
+      <p style={{color:C.muted,fontSize:14,margin:"10px 0 12px"}}>{totOk} corrette su {tot} — {pct}%</p>
+      <PBar value={totOk} max={tot} color={vc} h={12}/>
+    </div>
+    <div className="card" style={{padding:18,marginBottom:12}}>
+      <p style={{fontSize:11,fontWeight:800,color:C.light,letterSpacing:1,marginBottom:12}}>📊 DETTAGLIO PER TEMPO VERBALE</p>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        {CATS.map(c=>{const s=stats[c];if(s.pct===null)return null;const t=TMP[c];const col=s.pct>=75?C.futuro.a:s.pct>=50?C.congiuntivo.a:C.passato.a;return(<div key={c} style={{padding:"12px 14px",borderRadius:12,background:t.clr.bg,border:`1px solid ${t.clr.a}22`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><span style={{fontWeight:800,fontSize:12,color:C.text}}>{t.emoji} {t.short}</span><span style={{fontSize:13,fontWeight:900,color:col}}>{s.pct}%</span></div><PBar value={s.ok} max={s.tot} color={col} h={6}/><p style={{fontSize:11,color:C.muted,marginTop:4}}>{s.ok}/{s.tot} corrette</p></div>);})}
+      </div>
+    </div>
+    {forti.length>0&&(<div style={{background:"#F0FDF4",borderRadius:14,padding:16,marginBottom:10,borderLeft:`3px solid ${C.futuro.a}`}}><p style={{fontWeight:800,color:C.futuro.b,fontSize:13,marginBottom:8}}>💪 PUNTI DI FORZA</p><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:8}}>{forti.map(c=><Badge key={c} color={C.futuro.a}>{TMP[c].emoji} {TMP[c].short}</Badge>)}</div><p style={{color:C.futuro.b,fontSize:12,opacity:.8}}>Ottima preparazione! 🌟</p></div>)}
+    {deboli.length>0&&(<div style={{background:"#FDF2F8",borderRadius:14,padding:16,marginBottom:10,borderLeft:`3px solid ${C.passato.a}`}}><p style={{fontWeight:800,color:C.passato.b,fontSize:13,marginBottom:8}}>📚 DA STUDIARE MEGLIO</p><div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>{deboli.map(c=><Badge key={c} color={C.passato.a}>{TMP[c].emoji} {TMP[c].short}</Badge>)}</div><p style={{color:C.passato.b,fontSize:12,opacity:.8,marginBottom:10}}>Concentrati su questi nella prossima sessione:</p>{deboli.map(c=>{const t=TMP[c];return(<button key={c} className="btn tap" onClick={()=>onStudia(c)} style={{width:"100%",padding:"10px 14px",borderRadius:10,marginBottom:8,background:C.white,border:`1px solid ${t.clr.a}44`,color:t.clr.a,fontSize:13,fontWeight:800,textAlign:"left",display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:20}}>{t.emoji}</span><span>Ripassa: {t.nome}</span><span style={{marginLeft:"auto",opacity:.5}}>→</span></button>);})}</div>)}
+    {medi.length>0&&(<div style={{background:"#FFF7ED",borderRadius:14,padding:16,marginBottom:10,borderLeft:`3px solid ${C.congiuntivo.a}`}}><p style={{fontWeight:800,color:C.congiuntivo.b,fontSize:13,marginBottom:8}}>⚡ QUASI PERFETTO!</p><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{medi.map(c=>{const t=TMP[c];return(<button key={c} className="btn tap" onClick={()=>onStudia(c)} style={{padding:"5px 13px",borderRadius:20,background:`${t.clr.a}18`,color:t.clr.a,border:`1px solid ${t.clr.a}33`,fontSize:12,fontWeight:800}}>{t.emoji} {t.short} →</button>);})}</div></div>)}
+    <div className="card" style={{padding:16,marginBottom:14}}>
+      <p style={{fontSize:11,fontWeight:800,color:C.light,letterSpacing:1,marginBottom:12}}>🔍 TUTTE LE DOMANDE</p>
+      <div style={{maxHeight:280,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+        {domande.map((d,i)=>{const ok=risposte[d.id]===d.ok;const t=TMP[d.cat];return(<div key={d.id} style={{padding:"10px 12px",borderRadius:10,background:ok?"#F0FDF4":"#FFF7ED",borderLeft:`3px solid ${ok?C.futuro.a:C.congiuntivo.a}`,display:"flex",gap:10,alignItems:"flex-start"}}><span style={{fontSize:16,flexShrink:0}}>{ok?"✅":"❌"}</span><div style={{flex:1,minWidth:0}}><p style={{fontSize:12,fontWeight:700,color:C.text,lineHeight:1.4,margin:0,whiteSpace:"pre-wrap"}}>{i+1}. {d.t}</p>{!ok&&(<p style={{fontSize:11,color:C.congiuntivo.a,margin:"3px 0 0"}}>Tua: <em>{risposte[d.id]||"—"}</em>{" · "}Giusta: <strong style={{color:C.futuro.a}}>{d.ok}</strong></p>)}</div><Badge color={t.clr.a}>{t.emoji}</Badge></div>);})}
+      </div>
+    </div>
+    <button className="btn tap" onClick={onRicomincia} style={{width:"100%",padding:"14px",borderRadius:14,background:`linear-gradient(135deg,${C.presente.a},${C.condizionale.a})`,color:"white",fontSize:15,boxShadow:`0 4px 16px ${C.presente.a}33`}}>🔄 Nuovo test</button>
+  </div>);
+}
+
+function App(){
+  const [user,setUser]=useState(null);
+  const [vista,setVista]=useState("home");
+  const [tempoSel,setTempoSel]=useState(null);
+  const [tipoTest,setTipoTest]=useState(null);
+  const [domande,setDomande]=useState([]);
+  const [idx,setIdx]=useState(0);
+  const [risposte,setRisposte]=useState({});
+  const [scelta,setScelta]=useState(null);
+  const [confermata,setConfermata]=useState(false);
+  useEffect(()=>{if(user)saveUser(user);},[user]);
+  const login=(u)=>{setUser(u);setVista("home");};
+  const avviaTest=useCallback((tipo)=>{
+    let dq;
+    if(tipo==="MIX"){const a=pick20("A").slice(0,10);const b=pick20("B").slice(0,10);dq=shuffle([...a,...b]);}
+    else{dq=pick20(tipo);}
+    setDomande(dq);setIdx(0);setRisposte({});setScelta(null);setConfermata(false);setTipoTest(tipo);setVista("test");
+  },[]);
+  const confermaSel=()=>{if(!scelta)return;setConfermata(true);setRisposte(p=>({...p,[domande[idx].id]:scelta}));};
+  const avanti=()=>{
+    const nr={...risposte,[domande[idx].id]:scelta};
+    if(idx<domande.length-1){setIdx(i=>i+1);setScelta(null);setConfermata(false);}
+    else{
+      const prio=CATS.filter(c=>{const dc=domande.filter(d=>d.cat===c);const ok=dc.filter(d=>nr[d.id]===d.ok).length;return dc.length>0&&Math.round((ok/dc.length)*100)<60;});
+      setRisposte(nr);
+      setUser(u=>({...u,prioritari:prio,tests:[...(u.tests||[]),{data:Date.now(),tipo:tipoTest,tot:domande.length,ok:domande.filter(d=>nr[d.id]===d.ok).length,stats:Object.fromEntries(CATS.map(c=>{const dc=domande.filter(d=>d.cat===c);const ok=dc.filter(d=>nr[d.id]===d.ok).length;return[c,dc.length>0?Math.round((ok/dc.length)*100):null];}))}]}));
+      setVista("risultati");
+    }
+  };
+  const nav=(v)=>{setVista(v);setTempoSel(null);};
+  const dom=domande[idx];const tc=dom?TMP[dom.cat]:null;const lastTest=user?.tests?.[user.tests.length-1];
+  if(!user)return <LoginScreen onLogin={login}/>;
+  return(<div style={{minHeight:"100vh",background:C.bg}}>
+    <div style={{position:"sticky",top:0,zIndex:100,background:`${C.white}EE`,backdropFilter:"blur(10px)",borderBottom:`1px solid ${C.border}`,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <span style={{fontFamily:"'Baloo 2',sans-serif",fontSize:18,background:`linear-gradient(135deg,${C.presente.a},${C.condizionale.a})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",fontWeight:800}}>📝 ConjugaFacile</span>
+      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+        {[{id:"home",icon:"🏠"},{id:"studio",icon:"📚"},{id:"scegli-test",icon:"✏️"}].map(n=>(<button key={n.id} className="btn tap" onClick={()=>nav(n.id)} style={{padding:"7px 12px",borderRadius:10,background:vista===n.id||vista==="test"&&n.id==="scegli-test"||vista==="risultati"&&n.id==="scegli-test"?`${C.presente.a}15`:C.surface,border:`1px solid ${vista===n.id||vista==="test"&&n.id==="scegli-test"||vista==="risultati"&&n.id==="scegli-test"?C.presente.a:C.border}`,color:vista===n.id||vista==="test"&&n.id==="scegli-test"||vista==="risultati"&&n.id==="scegli-test"?C.presente.a:C.muted,fontSize:12}}>{n.icon} {n.id==="scegli-test"?"Test":n.id.charAt(0).toUpperCase()+n.id.slice(1)}</button>))}
+        <button className="btn tap" onClick={()=>setUser(null)} style={{padding:"7px 12px",borderRadius:10,background:C.surface,border:`1px solid ${C.border}`,color:C.muted,fontSize:12}}>👤 {user.nome}</button>
+      </div>
+    </div>
+    <div style={{maxWidth:640,margin:"0 auto",padding:"16px 14px 32px"}}>
+
+      {vista==="home"&&(<div className="fade-in">
+        {user.ultimoAccesso&&(<div className="slide-up card" style={{padding:18,marginBottom:14,borderLeft:`4px solid ${C.presente.a}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+            <div>
+              <p style={{fontWeight:800,color:C.text,fontSize:15}}>👋 Bentornata, {user.nome}!</p>
+              <p style={{color:C.muted,fontSize:12,marginTop:2}}>Ultimo accesso: {new Date(user.ultimoAccesso).toLocaleDateString("it-IT",{weekday:"short",day:"numeric",month:"long"})}</p>
+              {user.prioritari?.length>0&&(<p style={{color:C.congiuntivo.a,fontSize:12,marginTop:4,fontWeight:700}}>⚠️ Da ripassare: {user.prioritari.map(c=>TMP[c].short).join(", ")}</p>)}
+            </div>
+            {lastTest&&(<div style={{textAlign:"center",background:C.surface,borderRadius:12,padding:"10px 16px"}}><p style={{color:C.muted,fontSize:10,fontWeight:700}}>ULTIMO TEST</p><p style={{fontFamily:"'Baloo 2',sans-serif",color:Math.round((lastTest.ok/lastTest.tot)*100)>=75?C.futuro.a:C.congiuntivo.a,fontSize:24,fontWeight:800}}>{Math.round((lastTest.ok/lastTest.tot)*100)}%</p><p style={{color:C.muted,fontSize:10}}>{lastTest.ok}/{lastTest.tot} corrette</p></div>)}
+          </div>
+        </div>)}
+        {!user.ultimoAccesso&&(<div className="slide-up card" style={{padding:24,marginBottom:14,textAlign:"center"}}>
+          <div style={{fontSize:54,animation:"float 3s ease-in-out infinite"}}>🎓</div>
+          <h2 style={{fontFamily:"'Baloo 2',sans-serif",fontSize:22,color:C.text,margin:"10px 0 8px"}}>Ciao, {user.nome}! 👋</h2>
+          <p style={{color:C.muted,fontSize:14,lineHeight:1.7,maxWidth:360,margin:"0 auto 20px"}}>Studia le <strong style={{color:C.text}}>tabelle di coniugazione</strong>, poi fai un test da <strong style={{color:C.text}}>20 domande</strong> e scopri i tuoi punti forti e cosa ripassare!</p>
+          <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+            <button className="btn tap" onClick={()=>nav("studio")} style={{padding:"12px 22px",borderRadius:12,background:`linear-gradient(135deg,${C.presente.a},${C.imperfetto.a})`,color:"white",fontSize:15,boxShadow:`0 4px 14px ${C.presente.a}33`}}>📚 Studia</button>
+            <button className="btn tap" onClick={()=>nav("scegli-test")} style={{padding:"12px 22px",borderRadius:12,background:`linear-gradient(135deg,${C.passato.a},${C.congiuntivo.a})`,color:"white",fontSize:15,boxShadow:`0 4px 14px ${C.passato.a}33`}}>✏️ Fai il test</button>
+          </div>
+        </div>)}
+        <p style={{fontSize:11,fontWeight:800,color:C.light,letterSpacing:1,marginBottom:10}}>📖 I 6 TEMPI DA IMPARARE</p>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+          {TEMPI.map(t=>(<div key={t.id} className="tap card" onClick={()=>{setTempoSel(t.id);nav("studio");}} style={{padding:"14px 16px",cursor:"pointer",borderTop:`3px solid ${t.clr.a}`}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:28}}>{t.emoji}</span>{user.lezioniStudiate?.includes(t.id)&&<span>✅</span>}{user.prioritari?.includes(t.id)&&!user.lezioniStudiate?.includes(t.id)&&<span>⚠️</span>}</div><p style={{fontWeight:800,fontSize:13,color:C.text,marginTop:8,lineHeight:1.3}}>{t.nome}</p></div>))}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+          {[{icon:"📖",label:"Lezioni",val:`${user.lezioniStudiate?.length||0}/6`},{icon:"✏️",label:"Test fatti",val:user.tests?.length||0},{icon:"🏅",label:"Miglior score",val:user.tests?.length?Math.max(...user.tests.map(t=>Math.round((t.ok/t.tot)*100)))+"%":"—"}].map((s,i)=>(<div key={i} className="card" style={{padding:"12px 10px",textAlign:"center"}}><div style={{fontSize:22}}>{s.icon}</div><p style={{fontWeight:900,color:C.presente.a,fontSize:18,margin:"4px 0 2px"}}>{s.val}</p><p style={{color:C.muted,fontSize:11}}>{s.label}</p></div>))}
+        </div>
+        {lastTest&&(<div className="card" style={{padding:16}}><p style={{fontSize:11,fontWeight:800,color:C.light,letterSpacing:1,marginBottom:12}}>📈 ANDAMENTO ULTIMO TEST</p>{CATS.map(c=>{const pct=lastTest.stats?.[c];if(!pct&&pct!==0)return null;const t=TMP[c];const col=pct>=75?C.futuro.a:pct>=50?C.congiuntivo.a:C.passato.a;return(<div key={c} style={{marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:12,fontWeight:700,color:C.muted}}>{t.emoji} {t.short}</span><span style={{fontSize:12,fontWeight:900,color:col}}>{pct}%</span></div><PBar value={pct} max={100} color={col} h={6}/></div>);})}</div>)}
+      </div>)}
+
+      {vista==="studio"&&!tempoSel&&(<div className="fade-in">
+        <h2 style={{fontFamily:"'Baloo 2',sans-serif",fontSize:20,color:C.text,marginBottom:10}}>📚 Scegli cosa studiare</h2>
+        {user.prioritari?.length>0&&(<div style={{background:"#FFF7ED",borderRadius:12,padding:14,marginBottom:14,borderLeft:`3px solid ${C.congiuntivo.a}`}}><p style={{fontWeight:800,color:C.congiuntivo.b,fontSize:12,marginBottom:8}}>⚠️ Dall'ultimo test, ti consiglio di ripassare:</p><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{user.prioritari.map(a=>{const t=TMP[a];return(<button key={a} className="btn tap" onClick={()=>setTempoSel(a)} style={{padding:"6px 14px",borderRadius:20,background:t.clr.bg,border:`1px solid ${t.clr.a}44`,color:t.clr.a,fontSize:12,fontWeight:800}}>{t.emoji} {t.short}</button>);})}</div></div>)}
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {TEMPI.map(t=>(<div key={t.id} className="card tap" onClick={()=>setTempoSel(t.id)} style={{padding:"16px 18px",cursor:"pointer",borderLeft:`4px solid ${t.clr.a}`,display:"flex",alignItems:"center",gap:14}}><span style={{fontSize:32}}>{t.emoji}</span><div style={{flex:1}}><p style={{fontWeight:900,fontSize:15,color:C.text}}>{t.nome}</p><p style={{fontSize:12,color:C.muted,marginTop:2}}>{t.regola.slice(0,55)}…</p></div><div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>{user.lezioniStudiate?.includes(t.id)&&<span style={{fontSize:18}}>✅</span>}{user.prioritari?.includes(t.id)&&<span style={{fontSize:14}}>⚠️</span>}</div><span style={{color:C.border,fontSize:20}}>›</span></div>))}
+        </div>
+      </div>)}
+      {vista==="studio"&&tempoSel&&(<StudioTempo tempo={TMP[tempoSel]} onBack={()=>setTempoSel(null)} prioritario={user.prioritari?.includes(tempoSel)} onStudiato={()=>{setUser(u=>({...u,lezioniStudiate:u.lezioniStudiate.includes(tempoSel)?u.lezioniStudiate:[...u.lezioniStudiate,tempoSel]}));setTempoSel(null);}}/>)}
+
+      {vista==="scegli-test"&&(<SceltiTipoTest onScegli={avviaTest} prioritari={user.prioritari}/>)}
+
+      {vista==="test"&&domande.length>0&&(<div className="fade-in">
+        <div style={{marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+            <span style={{fontWeight:800,fontSize:13,color:C.muted}}>Domanda {idx+1}/{domande.length}</span>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <Badge color={tipoTest==="B"?C.condizionale.a:tipoTest==="MIX"?C.futuro.a:C.presente.a} size="sm">{tipoTest==="A"?"Tipo A":tipoTest==="B"?"Tipo B":"Mix"}</Badge>
+              <Badge color={tc?.clr.a||C.presente.a} size="sm">{tc?.emoji} {tc?.short}</Badge>
+            </div>
+          </div>
+          <PBar value={idx} max={domande.length} color={tc?.clr.a||C.presente.a} h={8}/>
+        </div>
+        <div className="card" style={{padding:20,marginBottom:12,borderTop:`3px solid ${tc?.clr.a||C.presente.a}`}}>
+          <p style={{fontSize:17,fontWeight:800,color:C.text,lineHeight:1.5,marginBottom:20,whiteSpace:"pre-wrap"}}>{dom.t}</p>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {dom.opz.map((op,i)=>{
+              let bg=C.surface,border=`1px solid ${C.border}`,col=C.text,extra=null;
+              if(confermata){if(op===dom.ok){bg="#F0FDF4";border=`2px solid ${C.futuro.a}`;col=C.futuro.b;extra="✅";}else if(op===scelta){bg="#FEF2F2";border=`2px solid ${C.wrong}`;col=C.wrong;extra="❌";}else{col=C.light;border=`1px solid ${C.border}`;}}
+              else if(op===scelta){bg=tc?.clr.bg||"#EFF8FF";border=`2px solid ${tc?.clr.a||C.presente.a}`;col=tc?.clr.b||C.presente.b;}
+              return(<div key={i} className={confermata?"":"tap"} onClick={()=>!confermata&&setScelta(op)} style={{padding:"13px 16px",borderRadius:12,background:bg,border,color:col,fontWeight:700,fontSize:15,cursor:confermata?"default":"pointer",display:"flex",alignItems:"center",gap:12,animation:confermata&&op===dom.ok?"pop .3s ease both":"none",transition:"background .15s,border .15s"}}><span style={{width:28,height:28,borderRadius:"50%",flexShrink:0,background:op===scelta&&!confermata?tc?.clr.a||C.presente.a:C.border,color:op===scelta&&!confermata?"white":C.muted,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:12,transition:"all .15s"}}>{"ABCD"[i]}</span><span style={{flex:1}}>{op}</span>{extra&&<span>{extra}</span>}</div>);
+            })}
+          </div>
+          {confermata&&(<div className="fade-in" style={{marginTop:14,padding:"12px 16px",borderRadius:12,background:scelta===dom.ok?"#F0FDF4":"#FFF7ED",border:`1px solid ${scelta===dom.ok?C.futuro.a:C.congiuntivo.a}44`}}><p style={{fontWeight:800,fontSize:14,color:scelta===dom.ok?C.futuro.b:C.congiuntivo.b}}>{scelta===dom.ok?"🎉 Corretto! Bravissima!":`💪 La risposta giusta era: "${dom.ok}"`}</p></div>)}
+        </div>
+        {!confermata?(<button className="btn tap" onClick={confermaSel} disabled={!scelta} style={{width:"100%",padding:"14px",borderRadius:14,background:scelta?`linear-gradient(135deg,${tc?.clr.a||C.presente.a},${tc?.clr.b||C.presente.b})`:C.surface,border:scelta?"none":`1px solid ${C.border}`,color:scelta?"white":C.muted,fontSize:16,boxShadow:scelta?`0 4px 16px ${tc?.clr.a||C.presente.a}33`:"none"}}>Conferma risposta ✓</button>):(<button className="btn tap" onClick={avanti} style={{width:"100%",padding:"14px",borderRadius:14,background:`linear-gradient(135deg,${C.congiuntivo.a},${C.condizionale.a})`,color:"white",fontSize:16,boxShadow:`0 4px 16px ${C.congiuntivo.a}33`}}>{idx<domande.length-1?"Prossima domanda →":"🏆 Vedi i risultati!"}</button>)}
+        <div style={{marginTop:12,display:"flex",gap:4,justifyContent:"center",flexWrap:"wrap"}}>
+          {domande.map((d,i)=>{const r=risposte[d.id];const st=r===undefined?(i===idx?"active":"empty"):r===d.ok?"ok":"no";return(<div key={i} style={{width:16,height:16,borderRadius:4,background:st==="ok"?C.futuro.a:st==="no"?C.passato.a:st==="active"?C.presente.a:C.border,transition:"background .2s"}}/>);})}
+        </div>
+      </div>)}
+
+      {vista==="risultati"&&domande.length>0&&(<Risultati risposte={risposte} domande={domande} onRicomincia={()=>nav("scegli-test")} onStudia={(id)=>{setTempoSel(id);nav("studio");}} tipoTest={tipoTest}/>)}
+
+    </div>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
